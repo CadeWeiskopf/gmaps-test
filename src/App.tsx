@@ -1,7 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import "./App.css";
 import { Wrapper, Status } from "@googlemaps/react-wrapper";
 import { useEffect, useRef } from "react";
+
+interface ILocation {
+  id: string;
+  position: google.maps.LatLngLiteral | google.maps.LatLng;
+  address: string;
+}
 
 const render = (status: string) => {
   switch (status) {
@@ -19,9 +25,11 @@ const render = (status: string) => {
 const MyMapComponent = ({
   center,
   zoom,
+  locations,
 }: {
   center: google.maps.LatLngLiteral;
   zoom: number;
+  locations: ILocation[];
 }) => {
   const ref = useRef<HTMLDivElement>(null);
 
@@ -34,11 +42,41 @@ const MyMapComponent = ({
       center,
       zoom,
     });
+    newMap.setValues({
+      styles: [
+        {
+          featureType: "poi",
+          elementType: "all",
+          stylers: [
+            {
+              visibility: "off",
+            },
+          ],
+        },
+      ],
+    });
+    const bounds = new google.maps.LatLngBounds();
 
-    const newMarker = new google.maps.Marker();
-    newMarker.setPosition(center);
-    newMarker.setLabel("TEST LABEL");
-    newMarker.setMap(newMap);
+    // newMap.addListener("click", (e: google.maps.MapMouseEvent) => {
+    //   console.log(e);
+    // });
+
+    bounds.extend(center);
+    locations.forEach((location: ILocation) => {
+      bounds.extend(location.position);
+      const newMarker = new google.maps.Marker();
+      newMarker.setPosition(location.position);
+      newMarker.setLabel(location.address);
+      newMarker.setMap(newMap);
+    });
+    newMap.fitBounds(bounds, 60);
+
+    const homeMarker = new google.maps.Marker();
+    homeMarker.setPosition(center);
+    homeMarker.setLabel("*");
+    homeMarker.setMap(newMap);
+    homeMarker.setIcon("house-fill.svg");
+    homeMarker.setZIndex(1);
   });
 
   return (
@@ -51,6 +89,26 @@ const MyMapComponent = ({
 };
 
 function App() {
+  const locations: ILocation[] = [
+    {
+      id: "0",
+      address: "Baronsmede",
+      position: { lat: 37.5210021, lng: -77.6479768 },
+    },
+    {
+      id: "1",
+      address: "Gobblersridge",
+      position: { lat: 37.5542743, lng: -77.782204 },
+    },
+    {
+      id: "2",
+      address: "Colonyhouse",
+      position: { lat: 37.4731774, lng: -77.6610978 },
+    },
+  ];
+
+  const [selectedLocations, setSelectedLocations] = useState<ILocation[]>([]);
+
   if (!process.env.REACT_APP_API_KEY) {
     throw Error("missisng api key");
   }
@@ -63,10 +121,48 @@ function App() {
           render={render}
         >
           <MyMapComponent
-            center={{ lat: 37.521002, lng: -77.6502728 }}
+            center={{ lat: 37.5082949, lng: -77.7401627 }}
             zoom={15}
+            locations={locations}
+          />
+          <MyMapComponent
+            center={{ lat: 37.5082949, lng: -77.7401627 }}
+            zoom={15}
+            locations={selectedLocations}
           />
         </Wrapper>
+        <div>
+          <h2>Locations</h2>
+          <ul>
+            {locations.map((location, index) => {
+              return (
+                <li key={index}>
+                  <input
+                    type="checkbox"
+                    onInput={(event: React.FormEvent<HTMLInputElement>) => {
+                      const elementInSelected = selectedLocations.find(
+                        (e) => e.id === location.id
+                      );
+                      if (elementInSelected && event.currentTarget.checked) {
+                        return;
+                      }
+                      if (elementInSelected && !event.currentTarget.checked) {
+                        selectedLocations.splice(
+                          selectedLocations.indexOf(elementInSelected),
+                          1
+                        );
+                      } else {
+                        selectedLocations.push(location);
+                      }
+                      setSelectedLocations(selectedLocations.map((e) => e));
+                    }}
+                  />
+                  {location.address}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       </main>
       <footer>test</footer>
     </div>
