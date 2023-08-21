@@ -59,7 +59,7 @@ function App() {
       <header>test</header>
       <main>
         <Wrapper
-          apiKey={process.env.REACT_APP_API_KEY || ""}
+          apiKey={process.env.REACT_APP_API_KEY}
           render={render}
         >
           <MyMapComponent
